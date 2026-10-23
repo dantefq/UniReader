@@ -1,0 +1,50 @@
+<resources>
+    <attr name="uniSurface" format="color"/><attr name="uniInk" format="color"/><attr name="uniLine" format="color"/>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#356859</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">#F5F4EF</item>
+        <item name="android:navigationBarColor">#F5F4EF</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="uniSurface">#FFFFFF</item><item name="uniInk">#20352F</item><item name="uniLine">#DCE3DB</item>
+        <item name="android:alertDialogTheme">@style/UniDialogLight</item><item name="android:buttonStyle">@style/UniButton</item>
+    </style>
+    <style name="AppThemeNight" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item><item name="android:colorAccent">#96D8BA</item>
+        <item name="android:windowBackground">#080A0B</item><item name="android:colorBackground">#080A0B</item>
+        <item name="android:textColorPrimary">#EFF3F0</item><item name="android:textColorSecondary">#ADB7B1</item><item name="android:colorControlNormal">#ADB7B1</item>
+        <item name="uniSurface">#15191B</item><item name="uniInk">#EFF3F0</item><item name="uniLine">#30383A</item>
+        <item name="android:alertDialogTheme">@style/UniDialogDark</item><item name="android:buttonStyle">@style/UniButton</item>
+        <item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">#080A0B</item><item name="android:navigationBarColor">#080A0B</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+    <style name="UniDialogLight" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:fontFamily">sans</item><item name="android:colorAccent">#356859</item>
+        <item name="android:windowBackground">@drawable/dialog_surface</item><item name="android:colorBackground">#FFFFFF</item>
+        <item name="uniSurface">#FFFFFF</item><item name="uniInk">#20352F</item><item name="uniLine">#DCE3DB</item>
+        <item name="android:textColorPrimary">#20352F</item><item name="android:textColorSecondary">#65746C</item>
+        <item name="android:windowMinWidthMajor">90%</item><item name="android:windowMinWidthMinor">90%</item>
+        <item name="android:listPreferredItemHeightSmall">56dp</item><item name="android:buttonBarButtonStyle">@style/UniDialogButton</item>
+        <item name="android:backgroundDimAmount">0.45</item>
+    </style>
+    <style name="UniDialogDark" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:fontFamily">sans</item><item name="android:colorAccent">#96D8BA</item>
+        <item name="android:windowBackground">@drawable/dialog_surface</item><item name="android:colorBackground">#15191B</item>
+        <item name="uniSurface">#15191B</item><item name="uniInk">#EFF3F0</item><item name="uniLine">#30383A</item>
+        <item name="android:textColorPrimary">#EFF3F0</item><item name="android:textColorSecondary">#ADB7B1</item>
+        <item name="android:windowMinWidthMajor">90%</item><item name="android:windowMinWidthMinor">90%</item>
+        <item name="android:listPreferredItemHeightSmall">56dp</item><item name="android:buttonBarButtonStyle">@style/UniDialogButton</item>
+        <item name="android:backgroundDimAmount">0.6</item>
+    </style>
+    <style name="UniDialogButton" parent="android:style/Widget.Material.Button.Borderless">
+        <item name="android:textAllCaps">false</item><item name="android:textColor">?android:attr/colorAccent</item><item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+    <style name="UniButton" parent="android:style/Widget.Material.Button.Borderless">
+        <item name="android:background">@drawable/control_button</item><item name="android:textColor">?attr/uniInk</item>
+        <item name="android:textAllCaps">false</item><item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:paddingLeft">14dp</item><item name="android:paddingRight">14dp</item><item name="android:minHeight">44dp</item><item name="android:minWidth">48dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+</resources>
