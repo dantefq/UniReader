@@ -1,0 +1,38 @@
+UniReader 1.2.1 (formerly QuietRead / Тихо • Документы)
+Copyright 2026. Application and new changes: GNU Affero General Public License 3 or later.
+Retained LibreOffice JNI sources remain under Mozilla Public License 2.0.
+
+LibreOfficeKit 26.2.6.3
+Copyright The Document Foundation and LibreOffice contributors.
+JNI bindings in org/libreoffice/kit are unmodified LibreOffice source files.
+LibreOffice is available under MPL 2.0 and LGPL 3+; its external components
+and bundled fonts retain their respective copyright and license notices.
+Native binaries are reused unmodified from the F-Droid build. In main.xcd,
+DisableMacrosExecution and DisableOLEAutomation are set to true.
+DisableActiveContent retains its upstream false default so that charts render.
+The modified registry source is included in this project and
+reproduced by tools/configure-engine.ps1.
+Calc's WarnActiveSheet is set to false because UniReader shows its own
+explicit current-sheet warning before exporting CSV.
+This application is not affiliated with The Document Foundation.
+
+Source and build provenance:
+https://github.com/LibreOffice/core/tree/libreoffice-26.2.6.3
+https://f-droid.org/packages/org.documentfoundation.libreoffice/
+https://f-droid.org/repo/org.documentfoundation.libreoffice_131_src.tar.gz
+https://f-droid.org/repo/org.documentfoundation.libreoffice_129_src.tar.gz
+https://gitlab.com/fdroid/fdroiddata/-/blob/master/metadata/org.documentfoundation.libreoffice.yml
+
+Full license texts are provided alongside the application source project
+and in the app's bundled LICENSE-LibreOffice-MPL.txt, LICENSE-LibreOffice.txt,
+and LICENSE-third-party.xml assets.
+
+PDF rendering and editing use unmodified MuPDF 1.28.5 in a dedicated process.
+No code, assets or libraries from the supplied One Read APK are included.
+
+
+UniReader additions and application: GNU Affero General Public License 3 or later.
+PDF engine: MuPDF 1.28.5, Copyright Artifex Software and contributors, AGPL 3 or later.
+Unmodified official AAR SHA256: e6887a242882cdd2dce062430bb46b6727513e3eb94e222255cc1a37db7a7d8e
+Corresponding sources are supplied in third_party/ inside the application source ZIP: mupdf-1.28.5-source.tar.gz and mupdf-android-fitz-1.28.5.zip. https://mupdf.com/
+
