@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.22)
+project(unireader_text C)
+add_library(unireader-text SHARED textbridge.c)
+target_include_directories(unireader-text PRIVATE include)
+target_compile_options(unireader-text PRIVATE -Wall -Wextra -Werror)
+target_link_options(unireader-text PRIVATE "-Wl,-z,max-page-size=16384")

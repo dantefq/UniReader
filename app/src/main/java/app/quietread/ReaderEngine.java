@@ -168,7 +168,7 @@ final class ReaderEngine implements AutoCloseable {
         document.postMouseEvent(Document.MOUSE_EVENT_BUTTON_UP,x,y,count,Document.MOUSE_BUTTON_LEFT,0);
     }
     void paste(String text) throws IOException {
-        if(document==null||!document.paste("text/plain;charset=utf-8",text))throw new IOException("Не удалось вставить текст. Поставьте курсор в текст или дважды коснитесь надписи на слайде.");
+        if(document==null||!Utf8Bridge.paste(document,text))throw new IOException("Не удалось вставить текст. Поставьте курсор в текст или дважды коснитесь надписи на слайде.");
     }
     void refreshGeometry() throws IOException {
         if(document==null||closed)return;

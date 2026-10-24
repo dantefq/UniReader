@@ -10,6 +10,7 @@ import org.json.*;
 /** Debug-only integration harness; no class or test routes exist in release APKs. */
 public final class QaExports {
     public static void run(ReaderEngine engine,Intent intent,File files){
+        if(intent.getBooleanExtra("qa_unicode122",false)){QaUnicode122.run(engine,intent,files);return;}
         if(intent.getBooleanExtra("qa_check12",false)){QaVersion12.run(engine,intent,files);return;}
         if(!intent.getBooleanExtra("qa_export_all",false))return;
         ReaderEngine.WORKER.execute(()->{

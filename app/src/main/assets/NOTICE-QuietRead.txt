@@ -1,4 +1,4 @@
-UniReader 1.2.1 (formerly QuietRead / Тихо • Документы)
+UniReader 1.2.2 (formerly QuietRead / Тихо • Документы)
 Copyright 2026. Application and new changes: GNU Affero General Public License 3 or later.
 Retained LibreOffice JNI sources remain under Mozilla Public License 2.0.
 
@@ -36,3 +36,14 @@ PDF engine: MuPDF 1.28.5, Copyright Artifex Software and contributors, AGPL 3 or
 Unmodified official AAR SHA256: e6887a242882cdd2dce062430bb46b6727513e3eb94e222255cc1a37db7a7d8e
 Corresponding sources are supplied in third_party/ inside the application source ZIP: mupdf-1.28.5-source.tar.gz and mupdf-android-fitz-1.28.5.zip. https://mupdf.com/
 
+
+UniReader UTF-8 JNI bridge: AGPL-3.0-or-later, source in app/src/main/cpp/.
+LibreOfficeKit C headers retain MPL-2.0. Android JNI header is Copyright
+2006 The Android Open Source Project, Apache License 2.0, notice retained
+in app/src/main/cpp/include/jni.h. This is an additional bridge, not a
+modification of LibreOffice's native libraries.
+
+Noto Emoji (unmodified font file, Google Fonts): SIL Open Font License 1.1.
+Copyright 2013 Google LLC. Full copyright and terms in
+assets/pdf-fonts/OFL-NotoEmoji.txt. Used as monochrome PDF glyph fallback.
+SHA256 de6c18832938afc99caf132b39d6a30a19bac7f2e812e28db2535b4608d27551.

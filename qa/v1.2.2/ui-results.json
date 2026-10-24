@@ -1,0 +1,51 @@
+[
+  {
+    "file": "sample.docx",
+    "inline_editor": true,
+    "document_visible": true,
+    "automatic_ime": true,
+    "saved": true
+  },
+  {
+    "file": "sample.odt",
+    "inline_editor": true,
+    "document_visible": true,
+    "automatic_ime": true,
+    "saved": true
+  },
+  {
+    "file": "sample.pptx",
+    "inline_editor": true,
+    "document_visible": true,
+    "automatic_ime": true,
+    "saved": true
+  },
+  {
+    "file": "sample.odg",
+    "inline_editor": true,
+    "document_visible": true,
+    "automatic_ime": true,
+    "saved": true
+  },
+  {
+    "file": "sample.xlsx",
+    "inline_editor": true,
+    "document_visible": true,
+    "automatic_ime": true,
+    "saved": true
+  },
+  {
+    "file": "sample.ods",
+    "inline_editor": true,
+    "document_visible": true,
+    "automatic_ime": true,
+    "saved": true
+  },
+  {
+    "file": "pdf-ui12.pdf",
+    "inline_editor": true,
+    "document_visible": true,
+    "automatic_ime": true,
+    "saved": true
+  }
+]

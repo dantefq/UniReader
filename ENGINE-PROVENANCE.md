@@ -23,7 +23,7 @@ Sources and licenses:
 
 Native binaries are unmodified. `main.xcd` security settings are changed and their modified source is distributed here. The native engine source tree is not duplicated in this small project archive; corresponding upstream source archives are linked above.
 
-QuietRead 1.1 also sets Calc Input/WarnActiveSheet=false. Its native UI explicitly warns that CSV exports only the current sheet, replacing the unavailable LibreOffice desktop dialog. DisableMacrosExecution and DisableOLEAutomation remain true; DisableActiveContent retains the upstream false default, for embedded charts.
+QuietRead 1.1 also sets Calc Input/WarnActiveSheet=false. Its native UI explicitly warns that CSV exports only the current sheet, replacing the unavailable LibreOffice desktop dialog. DisableMacrosExecution and DisableOLEAutomation remain true; DisableActiveContent retains the upstream false default, as authorized by the user for embedded charts.
 
 Independent legacy-format test fixtures:
 

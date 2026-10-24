@@ -27,8 +27,15 @@ final class EditorController {
     private boolean cellTyping,updatingCell;
     private int cellTap;
     private int textTap;
-    private boolean textOpening;
-    private AlertDialog textDialog;
+    private LinearLayout inlinePanel;
+    private EditText inlineInput;
+    private TextView inlineLabel,fontLabel;
+    private LinearLayout fontControls;
+    private boolean inlineActive;
+    private String inlineInitial="",inlineTool="";
+    private PdfEngine.Line inlinePdfLine;
+    private float inlinePoints=12;
+
     private String pdfTool="replace";
     private final Runnable autosave=()->saveDraft(null);
     EditorController(Activity a,ReaderEngine e,Library.Item i,Library l,Host h){activity=a;engine=e;item=i;library=l;host=h;}
@@ -37,7 +44,7 @@ final class EditorController {
         if(engine.type==1){if(cellTyping)applyCell(false);cellTyping=false;int request=++cellTap;
             ReaderEngine.WORKER.execute(()->{if(closed)return;engine.click(x,y,1,zoom);main.postDelayed(()->{if(!closed&&request==cellTap){syncCell();focusCell();}},140);});
         }else {
-            int request=++textTap;
+            commitInput();int request=++textTap;
             ReaderEngine.WORKER.execute(()->{try{if(closed)return;
                 // Draw/Impress require entering the text object, rather than only selecting its frame.
                 engine.click(x,y,engine.type==2||engine.type==3?2:count,zoom);
@@ -71,26 +78,63 @@ final class EditorController {
         if(engine.type==2){add(bar,"Добавить слайд",()->command(".uno:InsertPage",true));add(bar,"Удалить слайд",()->new AlertDialog.Builder(activity).setTitle("Удалить текущий слайд?").setNegativeButton("Отмена",null).setPositiveButton("Удалить",(d,w)->command(".uno:DeletePage",true)).show());}
         add(bar,"Сохранить копию",()->{if(engine.type==1)applyCell(true);host.export();});container.addView(scroll);return container;
     }
-    void commitInput(){if(engine.type==1)applyCell(true);}
+    void commitInput(){if(engine.type==1)applyCell(true);else applyInline();}
     private View pdfToolbar(){HorizontalScrollView scroll=new HorizontalScrollView(activity);scroll.setHorizontalScrollBarEnabled(false);LinearLayout bar=new LinearLayout(activity);bar.setPadding(dp(8),dp(6),dp(8),dp(6));scroll.addView(bar);
-        add(bar,"Просмотр",()->{editing=false;host.rebuild();});
+        add(bar,"Просмотр",()->{commitInput();editing=false;host.rebuild();});
         add(bar,"Инструмент PDF",()->new AlertDialog.Builder(activity).setTitle("Редактирование PDF").setSingleChoiceItems(new String[]{"Заменить текст — коснитесь строки","Добавить надпись — коснитесь места","Выделить текст — коснитесь строки","Удалить текст — коснитесь строки"},java.util.Arrays.asList("replace","add","highlight","delete").indexOf(pdfTool),(d,w)->{pdfTool=new String[]{"replace","add","highlight","delete"}[w];d.dismiss();host.changed();}).show());
-        add(bar,"Отменить",()->mutate(()->engine.pdf.undo()));add(bar,"Повторить",()->mutate(()->engine.pdf.redo()));add(bar,"Сохранить PDF",host::export);return scroll;
+        add(bar,"Отменить",()->{commitInput();mutate(()->engine.pdf.undo());});add(bar,"Повторить",()->{commitInput();mutate(()->engine.pdf.redo());});add(bar,"Сохранить PDF",host::export);return scroll;
     }
     String hint(){if(engine.pdf!=null)return pdfTool.equals("add")?"Коснитесь места для новой надписи":pdfTool.equals("highlight")?"Коснитесь строки для выделения":pdfTool.equals("delete")?"Коснитесь строки для удаления":"Коснитесь строки для замены текста";return engine.type==1?"Коснитесь ячейки · введите значение · ✓":"Коснитесь текста — откроется клавиатура";}
-    private void pdfTap(float x,float y){String tool=pdfTool;ReaderEngine.WORKER.execute(()->{try{
-        if(closed)return;PdfEngine.Line line=tool.equals("add")?engine.pdf.insertion(x,y):engine.pdf.select(x,y);
-        main.post(()->{if(closed)return;if(line==null){host.error("В этом месте нет текстового слоя. На скан можно добавить надпись инструментом «Добавить надпись».");return;}
-            if(tool.equals("highlight")){mutate(()->engine.pdf.highlight(line));return;}
-            if(tool.equals("delete")){mutate(()->engine.pdf.replace(line,"",line.size,true));return;}
-            LinearLayout box=new LinearLayout(activity);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(16),0,dp(16),0);
-            EditText field=input("Текст");field.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE);field.setMinLines(2);field.setMaxLines(6);field.setText(tool.equals("add")?"":line.text);field.setSelectAllOnFocus(true);box.addView(field);
-            EditText size=input("Размер шрифта, пт");size.setContentDescription("Размер шрифта PDF");size.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);size.setSingleLine();size.setText(String.format(java.util.Locale.ROOT,"%.1f",line.size));box.addView(size);
-            AlertDialog dialog=new AlertDialog.Builder(activity).setTitle(tool.equals("add")?"Новая надпись":"Заменить строку PDF").setMessage("Остальные объекты страницы сохраняются. Новый текст остаётся в выбранном месте, без перевёрстки соседних блоков.").setView(box).setNegativeButton("Отмена",null).setPositiveButton("Применить",null).create();
-            dialog.setOnShowListener(d->{showKeyboard(field,dialog);dialog.getButton(-1).setOnClickListener(v->{float points;try{points=Float.parseFloat(size.getText().toString().replace(',','.'));if(points<4||points>144)throw new NumberFormatException();}catch(NumberFormatException ex){size.setError("От 4 до 144 пт");return;}String value=field.getText().toString();dialog.dismiss();mutate(()->engine.pdf.replace(line,value,points,!tool.equals("add")));});});dialog.show();
-        });
-    }catch(Exception ex){main.post(()->{if(!closed)host.error(ex.getMessage());});}});}
-    private void showKeyboard(EditText field,AlertDialog dialog){Keyboard.show(field,dialog);}
+    private void pdfTap(float x,float y){
+        commitInput();String tool=pdfTool;int request=++textTap;
+        ReaderEngine.WORKER.execute(()->{try{
+            if(closed)return;PdfEngine.Line line=tool.equals("add")?engine.pdf.insertion(x,y):engine.pdf.select(x,y);
+            main.post(()->{if(closed||!editing||request!=textTap)return;
+                if(line==null){host.error("В этом месте нет текстового слоя. На скан можно добавить надпись инструментом «Добавить надпись».");return;}
+                if(tool.equals("highlight")){mutate(()->engine.pdf.highlight(line));return;}
+                if(tool.equals("delete")){mutate(()->engine.pdf.replace(line,"",line.size,true));return;}
+                openInline(tool.equals("add")?"":line.text,line,tool);
+            });
+        }catch(Exception ex){main.post(()->{if(!closed)host.error(ex.getMessage());});}});
+    }
+    /** A normal part of the reader layout: never a floating or modal window. */
+    View inputPanel(){
+        inlinePanel=new LinearLayout(activity);inlinePanel.setOrientation(LinearLayout.VERTICAL);
+        inlinePanel.setPadding(dp(10),dp(4),dp(10),dp(6));inlinePanel.setVisibility(View.GONE);
+        android.util.TypedValue surface=new android.util.TypedValue();activity.getTheme().resolveAttribute(R.attr.uniSurface,surface,true);inlinePanel.setBackgroundColor(surface.data);
+        LinearLayout header=new LinearLayout(activity);header.setGravity(Gravity.CENTER_VERTICAL);
+        inlineLabel=new TextView(activity);inlineLabel.setTextSize(12);header.addView(inlineLabel,new LinearLayout.LayoutParams(0,-2,1));
+        fontControls=new LinearLayout(activity);fontControls.setGravity(Gravity.CENTER_VERTICAL);
+        Button minus=new Button(activity);minus.setText("−");minus.setContentDescription("Уменьшить размер текста PDF");minus.setOnClickListener(v->fontSize(-1));fontControls.addView(minus,new LinearLayout.LayoutParams(dp(40),dp(40)));
+        fontLabel=new TextView(activity);fontLabel.setGravity(Gravity.CENTER);fontLabel.setTextSize(12);fontControls.addView(fontLabel,new LinearLayout.LayoutParams(dp(66),dp(40)));
+        Button plus=new Button(activity);plus.setText("+");plus.setContentDescription("Увеличить размер текста PDF");plus.setOnClickListener(v->fontSize(1));fontControls.addView(plus,new LinearLayout.LayoutParams(dp(40),dp(40)));header.addView(fontControls);
+        Button cancel=new Button(activity);cancel.setText("×");cancel.setContentDescription("Сбросить ввод текста");cancel.setOnClickListener(v->dismissInline());header.addView(cancel,new LinearLayout.LayoutParams(dp(44),dp(40)));
+        Button done=new Button(activity);done.setText("✓");done.setContentDescription("Применить текст");done.setOnClickListener(v->applyInline());header.addView(done,new LinearLayout.LayoutParams(dp(44),dp(40)));inlinePanel.addView(header);
+        inlineInput=input("Введите текст в выбранном месте");inlineInput.setContentDescription("Текст в документе");inlineInput.setMinLines(1);inlineInput.setMaxLines(4);
+        inlineInput.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        inlineInput.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);inlinePanel.addView(inlineInput,new LinearLayout.LayoutParams(-1,-2));
+        return inlinePanel;
+    }
+    private void fontSize(int delta){inlinePoints=Math.max(4,Math.min(144,inlinePoints+delta));fontLabel.setText(String.format(java.util.Locale.ROOT,"%.1f пт",inlinePoints));}
+    private void openInline(String value,PdfEngine.Line line,String tool){
+        if(inlinePanel==null||closed||!editing)return;
+        inlineActive=true;inlineInitial=value;inlinePdfLine=line;inlineTool=tool;inlinePoints=line==null?12:Math.max(4,Math.min(144,line.size));
+        inlineLabel.setText(line==null?(value.isEmpty()?"Вставка текста":"Замена выделения"):tool.equals("add")?"Надпись PDF":"Строка PDF");
+        fontControls.setVisibility(line==null?View.GONE:View.VISIBLE);fontSize(0);inlineInput.setText(value);inlineInput.setSelection(value.length());
+        inlinePanel.setVisibility(View.VISIBLE);Keyboard.show(inlineInput);host.changed();
+    }
+    private void dismissInline(){
+        textTap++;inlineActive=false;inlinePdfLine=null;
+        if(inlineInput!=null){((InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(inlineInput.getWindowToken(),0);inlineInput.clearFocus();}
+        if(inlinePanel!=null)inlinePanel.setVisibility(View.GONE);if(view!=null)view.requestFocus();
+    }
+    private void applyInline(){
+        if(!inlineActive||inlineInput==null)return;
+        String value=inlineInput.getText().toString(),initial=inlineInitial,tool=inlineTool;PdfEngine.Line line=inlinePdfLine;float points=inlinePoints;
+        dismissInline();
+        if(line!=null){if((!tool.equals("add")&&value.equals(initial)&&points==line.size)||(tool.equals("add")&&value.isEmpty()))return;mutate(()->engine.pdf.replace(line,value,points,!tool.equals("add")));}
+        else if(!value.equals(initial))mutate(()->{if(value.isEmpty())engine.command(".uno:Delete","{}");else engine.paste(value);});
+    }
     void cellSelection(String address,String formula){
         if(address!=null&&!address.isEmpty())cellAddress=address;if(formula!=null)cellFormula=formula;
         if(!cellTyping)syncCell();
@@ -103,25 +147,14 @@ final class EditorController {
     private void add(LinearLayout bar,String label,Runnable action){Button b=new Button(activity);b.setAllCaps(false);b.setText(label);b.setTextSize(12);b.setMinHeight(dp(44));b.setContentDescription(label);b.setOnClickListener(v->action.run());LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(44));p.setMarginEnd(dp(5));bar.addView(b,p);}
     private EditText input(String hint){EditText t=new EditText(activity);t.setHint(hint);t.setTextSize(17);t.setPadding(dp(18),dp(8),dp(18),dp(8));return t;}
     void text(){
-        if(!editing||closed||textOpening)return;
+        if(!editing||closed)return;
         if(engine.type==1){focusCell();return;}
-        textOpening=true;
-        ReaderEngine.WORKER.execute(()->{
-            try{if(closed)return;
-            String selected=engine.type==1?cellFormula:engine.document.getTextSelection("text/plain;charset=utf-8");
-            String initial=selected==null?"":selected;
-            main.post(()->{if(closed||!editing){textOpening=false;return;}EditText field=input(engine.type==1?"Значение или =формула":"Текст для вставки или замены выделения");
-                field.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-                field.setMinLines(3);field.setMaxLines(9);field.setText(initial);field.setSelection(field.length());
-                AlertDialog d=new AlertDialog.Builder(activity).setTitle(engine.type==1?"Ячейка "+cellAddress:"Изменить текст").setView(field).setNegativeButton("Отмена",null)
-                    .setPositiveButton("Применить",(dialog,which)->{
-                        String value=field.getText().toString();
-                        if(value.isEmpty()&&initial.isEmpty())return;
-                        mutate(()->{if(value.isEmpty()){engine.command(engine.type==1?".uno:DeleteContents":".uno:Delete",engine.type==1?new JSONObject().put("Flags",prop("string","A")).toString():"{}");}else engine.paste(value);});
-                    }).create();textDialog=d;d.setOnShowListener(dialog->Keyboard.show(field,d));d.setOnDismissListener(dialog->{textOpening=false;textDialog=null;});d.show();
-            });
-            }catch(RuntimeException ex){main.post(()->{textOpening=false;if(!closed)host.error(ex.getMessage());});}
-        });
+        if(inlineActive){Keyboard.show(inlineInput);return;}
+        int request=++textTap;
+        ReaderEngine.WORKER.execute(()->{try{
+            if(closed)return;String selected=Utf8Bridge.selectedText(engine.document);
+            main.post(()->{if(!closed&&editing&&request==textTap)openInline(selected,null,"");});
+        }catch(RuntimeException ex){main.post(()->{if(!closed)host.error(ex.getMessage());});}});
     }
     private void goToCell(){EditText field=input("Например B2 или A1:C5");field.setSingleLine();field.setText(cellAddress);field.selectAll();AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Перейти к ячейке").setView(field).setNegativeButton("Отмена",null).setPositiveButton("Перейти",(d,w)->{
         String address=field.getText().toString().trim();
@@ -130,7 +163,7 @@ final class EditorController {
         if(cellTyping)applyCell(false);ReaderEngine.WORKER.execute(()->{try{engine.command(".uno:GoToCell",new JSONObject().put("ToPoint",prop("string",cellAddress)).toString());main.postDelayed(()->{if(!closed){syncCell();focusCell();}},140);}catch(Exception ex){main.post(()->host.error(ex.getMessage()));}});
     }).create();dialog.setOnShowListener(d->Keyboard.show(field,dialog));dialog.show();}
     private void format(){String[] labels={"По левому краю","По центру","По правому краю","По ширине","Маркированный список","Нумерованный список"};String[] commands={"LeftPara","CenterPara","RightPara","JustifyPara","DefaultBullet","DefaultNumbering"};new AlertDialog.Builder(activity).setTitle("Формат абзаца").setItems(labels,(d,w)->command(".uno:"+commands[w],true)).show();}
-    void command(String name,boolean changes){if(changes)mutate(()->engine.command(name,"{}"));else ReaderEngine.WORKER.execute(()->{if(!closed)engine.command(name,"{}");});}
+    void command(String name,boolean changes){commitInput();if(changes)mutate(()->engine.command(name,"{}"));else ReaderEngine.WORKER.execute(()->{if(!closed)engine.command(name,"{}");});}
     interface Edit {void apply() throws Exception;}
     private void mutate(Edit operation){
         dirty=true;revision++;host.changed();main.removeCallbacks(autosave);
@@ -155,12 +188,13 @@ final class EditorController {
         });
     }
     boolean confirmClose(Runnable action){
+        commitInput();
         if(!dirty)return false;
         new AlertDialog.Builder(activity).setTitle("Сохранить изменения?").setMessage("Исходный файл не меняется. Можно сохранить локальный черновик и позже экспортировать его.")
             .setNegativeButton("Отмена",null).setNeutralButton("Не сохранять",(d,w)->{main.removeCallbacks(autosave);dirty=false;action.run();})
             .setPositiveButton("Сохранить черновик",(d,w)->saveDraft(action)).show();return true;
     }
-    String status(){return saving?"Сохраняем черновик…":dirty?"Есть изменения":item.draftPath!=null?"Черновик сохранён":"Режим редактирования";}
-    void close(){closed=true;textTap++;main.removeCallbacks(autosave);if(textDialog!=null)textDialog.dismiss();textOpening=false;if(view!=null)view.setEditing(false,null);view=null;}
+    String status(){return inlineActive?"Ввод текста · ✓ применить":saving?"Сохраняем черновик…":dirty?"Есть изменения":item.draftPath!=null?"Черновик сохранён":"Режим редактирования";}
+    void close(){closed=true;dismissInline();main.removeCallbacks(autosave);if(view!=null)view.setEditing(false,null);view=null;}
     static JSONObject prop(String type,Object value) throws Exception{return new JSONObject().put("type",type).put("value",value);}
 }

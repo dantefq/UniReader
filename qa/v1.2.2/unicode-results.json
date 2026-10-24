@@ -1,0 +1,27 @@
+[
+  {
+    "file": "pdf-ui12.pdf",
+    "unicode_roundtrip": true,
+    "selection_roundtrip": false
+  },
+  {
+    "file": "sample.docx",
+    "unicode_roundtrip": true,
+    "selection_roundtrip": true
+  },
+  {
+    "file": "sample.odg",
+    "unicode_roundtrip": true,
+    "selection_roundtrip": false
+  },
+  {
+    "file": "sample.pptx",
+    "unicode_roundtrip": true,
+    "selection_roundtrip": false
+  },
+  {
+    "file": "sample.xlsx",
+    "unicode_roundtrip": true,
+    "selection_roundtrip": true
+  }
+]

@@ -1,0 +1,1 @@
+PASS: signed 1.2.2 release installed as update; opened DOCX via Android picker; canvas tap opens docked editor and IME; cancel closes it

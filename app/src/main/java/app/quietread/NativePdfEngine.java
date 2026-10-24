@@ -14,6 +14,7 @@ final class NativePdfEngine implements AutoCloseable {
     private DisplayList display;
     private List<Line> lines;
     private final File fontFile;
+    private final File emojiFile;
     Rect bounds;
     int part;
     static final class Line {
@@ -27,6 +28,8 @@ final class NativePdfEngine implements AutoCloseable {
         opened.destroy();doc.disableJs();doc.enableJournal();
         fontFile=new File(context.getFilesDir(),"pdf-LiberationSans.ttf");
         if(!fontFile.isFile())try(InputStream in=context.getAssets().open("unpack/user/fonts/LiberationSans-Regular.ttf");OutputStream out=new FileOutputStream(fontFile)){byte[] b=new byte[16384];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}catch(IOException ex){fontFile.delete();doc.destroy();throw ex;}
+        emojiFile=new File(context.getFilesDir(),"pdf-NotoEmoji-de6c1883.ttf");
+        if(!emojiFile.isFile())try(InputStream in=context.getAssets().open("pdf-fonts/NotoEmoji.ttf");OutputStream out=new FileOutputStream(emojiFile)){byte[] b=new byte[16384];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}catch(IOException ex){emojiFile.delete();doc.destroy();throw ex;}
     }
     int count(){return doc.countPages();}
     void setPart(int n){dropPage();part=n;page=(PDFPage)doc.loadPage(n);bounds=page.getBounds();}
@@ -68,14 +71,37 @@ final class NativePdfEngine implements AutoCloseable {
         }catch(RuntimeException ex){doc.abandonOperation();dropRaster();throw ex;}finally{if(overlay!=null)overlay.destroy();}
     }
     private PDFDocument makeText(Line line,String value,float size){
-        Font font=new Font(fontFile.getAbsolutePath());Buffer buffer=new Buffer();DocumentWriter writer=new DocumentWriter(buffer,"pdf","compress=yes");Text text=new Text();
+        Font font=new Font(fontFile.getAbsolutePath());ArrayList<Font> fallback=new ArrayList<>();Buffer buffer=new Buffer();DocumentWriter writer=new DocumentWriter(buffer,"pdf","compress=yes");Text text=new Text();
         try{
             Device device=writer.beginPage(new Rect(bounds));float dx=line.dir.x,dy=line.dir.y;
             String[] rows=value.split("\n",-1);float y=line.origin.y,x=line.origin.x;
-            for(int n=0;n<rows.length;n++)text.showString(font,new Matrix(size*dx,size*dy,size*dy,-size*dx,x-dy*n*size*1.3f,y+dx*n*size*1.3f),rows[n]);
+            for(int n=0;n<rows.length;n++){
+                float pen=0;String row=rows[n].replace("\t","    ");
+                for(int offset=0;offset<row.length();){int cp=row.codePointAt(offset);offset+=Character.charCount(cp);
+                    Font selected=font;int glyph=font.encodeCharacter(cp);
+                    if(glyph==0){
+                        if(fallback.isEmpty()){fallback.add(new Font(emojiFile.getAbsolutePath()));for(String name:new String[]{"NotoSansSymbols2-Regular.ttf","NotoSansSymbols-Regular-Subsetted.ttf","NotoSans-Regular.ttf","NotoSansCJK-Regular.ttc"}){
+                            File file=new File("/system/fonts",name);if(file.isFile())try{fallback.add(new Font(file.getAbsolutePath()));}catch(RuntimeException ignored){}
+                        }}
+                        for(Font candidate:fallback){int found=candidate.encodeCharacter(cp);if(found!=0){selected=candidate;glyph=found;break;}}
+                    }
+                    if(glyph==0)throw new IllegalArgumentException(String.format(Locale.ROOT,"Нет шрифта для символа U+%04X. Исходная строка не изменена.",cp));
+                    text.showGlyph(selected,new Matrix(size*dx,size*dy,size*dy,-size*dx,x+dx*pen-dy*n*size*1.3f,y+dy*pen+dx*n*size*1.3f),glyph,cp);
+                    pen+=selected.advanceGlyph(glyph)*size;
+                }
+            }
             int color=line.argb;device.fillText(text,Matrix.Identity(),ColorSpace.DeviceRGB,new float[]{((color>>16)&255)/255f,((color>>8)&255)/255f,(color&255)/255f},1,0);
-            writer.endPage();device.destroy();writer.close();com.artifex.mupdf.fitz.Document result=com.artifex.mupdf.fitz.Document.openDocument(buffer.asByteArray(),"application/pdf");try{return result.asPDF();}finally{result.destroy();}
-        }finally{text.destroy();font.destroy();writer.destroy();buffer.destroy();}
+            writer.endPage();device.destroy();writer.close();com.artifex.mupdf.fitz.Document result=com.artifex.mupdf.fitz.Document.openDocument(buffer.asByteArray(),"application/pdf");try{
+                PDFDocument overlay=result.asPDF();
+                try{PDFPage generated=(PDFPage)overlay.loadPage(0);try{PDFObject fonts=generated.getObject().getInheritable("Resources").get("Font");
+                    for(PDFObject key:fonts){PDFObject entry=fonts.get(key),cmap=entry.get("ToUnicode");if(!cmap.isNull()){
+                        String original=new String(cmap.readStream(),java.nio.charset.StandardCharsets.US_ASCII);
+                        entry.put("ToUnicode",overlay.addStream(PdfUnicodeCMap.repair(original)));
+                    }}
+                }finally{generated.destroy();}overlay.subsetFonts();return overlay;
+                }catch(RuntimeException ex){overlay.destroy();throw ex;}
+            }finally{result.destroy();}
+        }finally{text.destroy();font.destroy();for(Font extra:fallback)extra.destroy();writer.destroy();buffer.destroy();}
     }
     private PDFObject copyDict(PDFObject source){PDFObject copy=doc.newDictionary();if(!source.isNull())for(PDFObject key:source)copy.put(key,source.get(key));return copy;}
     private void appendOverlay(PDFDocument overlay){
@@ -85,7 +111,7 @@ final class NativePdfEngine implements AutoCloseable {
             if(streams.isArray())for(PDFObject stream:streams)contents.writeBytes(stream.readStream());else contents.writeBytes(streams.readStream());
             PDFObject form=doc.newDictionary();form.put("Type",doc.newName("XObject"));form.put("Subtype",doc.newName("Form"));form.put("BBox",doc.graftObject(addedPage.get("MediaBox")));form.put("Resources",doc.graftObject(addedPage.getInheritable("Resources")));
             PDFObject object=doc.addStream(contents,form),target=page.getObject();PDFObject resources=copyDict(target.getInheritable("Resources")),xobjects=copyDict(resources.get("XObject"));
-            String name="UniEdit"+object.asIndirect();xobjects.put(name,object);resources.put("XObject",xobjects);target.put("Resources",resources);
+            String base="UniEdit"+object.asIndirect(),name=base;int suffix=0;while(!xobjects.get(name).isNull())name=base+"_"+(++suffix);xobjects.put(name,object);resources.put("XObject",xobjects);target.put("Resources",resources);
             Matrix placement=new Matrix(added.getTransform(),Matrix.Inverted(page.getTransform()));
             String drawing=String.format(Locale.ROOT,"q %.8f %.8f %.8f %.8f %.8f %.8f cm /%s Do Q\n",placement.a,placement.b,placement.c,placement.d,placement.e,placement.f,name);
             PDFObject all=doc.newArray();all.push(doc.addStream("q\n"));PDFObject prior=target.get("Contents");if(prior.isArray())for(PDFObject stream:prior)all.push(stream);else if(!prior.isNull())all.push(prior);all.push(doc.addStream("\nQ\n"+drawing));target.put("Contents",all);

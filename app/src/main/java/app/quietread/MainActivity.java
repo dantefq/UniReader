@@ -143,7 +143,7 @@ public class MainActivity extends Activity {
         }).show();
     }
     private void formats() {new AlertDialog.Builder(this).setTitle("Форматы").setMessage("PDF\nWord: DOC, DOCX, DOCM, DOT, DOTX, DOTM, RTF\nWriter: ODT, OTT, FODT, SXW, STW\nExcel: XLS, XLSX, XLSM, XLSB, XLT, XLTX, XLTM\nCalc: ODS, OTS, FODS, SXC, STC, CSV, TSV\nPowerPoint: PPT, PPTX, PPTM, PPS, PPSX, PPSM, POT, POTX, POTM\nImpress: ODP, OTP, FODP, SXI, STI\nDraw: ODG, OTG, FODG, SXD, STD\nОбычный текст: TXT\n\nПоддержка зависит от фильтров LibreOffice. Возможны отличия шрифтов и вёрстки. Макросы не запускаются. Парольные документы пока недоступны.").setPositiveButton("Понятно",null).show();}
-    private void about() {new AlertDialog.Builder(this).setTitle("UniReader 1.2.1").setMessage("Просмотр, базовое редактирование и конвертация без рекламы, аналитики и доступа к интернету. Документы хранятся в закрытой папке приложения. Удаление приложения удаляет локальные копии и закладки.\n\nДвижок: LibreOfficeKit 26.2.6.3, The Document Foundation и участники LibreOffice, MPL 2.0 и лицензии компонентов. PDF: MuPDF 1.28.5, Artifex Software, AGPL 3.0+. Исходники приложения распространяются под AGPL 3.0+; отдельные компоненты сохраняют свои лицензии.\n\nИсходники движка:\nhttps://download.documentfoundation.org/libreoffice/src/26.2.6/\nhttps://f-droid.org/repo/org.documentfoundation.libreoffice_131_src.tar.gz\n\nЭто самостоятельный просмотрщик, не официальный продукт LibreOffice.").setPositiveButton("Закрыть",null).setNeutralButton("Лицензии",(d,w)->{
+    private void about() {new AlertDialog.Builder(this).setTitle("UniReader 1.2.2").setMessage("Просмотр, базовое редактирование и конвертация без рекламы, аналитики и доступа к интернету. Документы хранятся в закрытой папке приложения. Удаление приложения удаляет локальные копии и закладки.\n\nДвижок: LibreOfficeKit 26.2.6.3, The Document Foundation и участники LibreOffice, MPL 2.0 и лицензии компонентов. PDF: MuPDF 1.28.5, Artifex Software, AGPL 3.0+. Исходники приложения распространяются под AGPL 3.0+; отдельные компоненты сохраняют свои лицензии.\n\nИсходники движка:\nhttps://download.documentfoundation.org/libreoffice/src/26.2.6/\nhttps://f-droid.org/repo/org.documentfoundation.libreoffice_131_src.tar.gz\n\nЭто самостоятельный просмотрщик, не официальный продукт LibreOffice.").setPositiveButton("Закрыть",null).setNeutralButton("Лицензии",(d,w)->{
         try(InputStream in=getAssets().open("NOTICE-QuietRead.txt")) {ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)bytes.write(b,0,n);new AlertDialog.Builder(this).setTitle("Лицензии").setMessage(new String(bytes.toByteArray(),java.nio.charset.StandardCharsets.UTF_8)).setPositiveButton("Закрыть",null).show();}catch(IOException ex){error(ex.getMessage());}
     }).show();}
     private void pick() {
@@ -221,6 +221,7 @@ public class MainActivity extends Activity {
         editor.editing=true;savePosition();reader();if(after!=null)after.run();
     }
     private void reader() {
+        if(editor!=null)editor.commitInput();
         if(documentView!=null)documentView.detach();
         base();LinearLayout bar=row();pad(bar,12,8);bar.addView(iconButton("back","Закрыть документ",this::leave));
         LinearLayout name=vertical();pad(name,12,0);title=bold(item.name,15,fg());title.setSingleLine();title.setEllipsize(TextUtils.TruncateAt.MIDDLE);name.addView(title);
@@ -229,7 +230,7 @@ public class MainActivity extends Activity {
             editStatus=text("",12,accent());pad(editStatus,18,4);root.addView(editStatus);root.addView(editor.toolbar());updateEditorStatus();
         }else editStatus=null;
         documentView=new DocumentView(this);documentView.setNight(night);root.addView(documentView,new LinearLayout.LayoutParams(-1,0,1));
-        if(editor!=null)editor.bind(documentView);
+        if(editor!=null){editor.bind(documentView);if(editor.editing&&engine.type!=1)root.addView(editor.inputPanel());}
         documentView.listener=new DocumentView.Listener(){
             @Override public void position(float x,float y,float zoom){if(item!=null){item.x=x;item.y=y;item.zoom=zoom;updateLocation();}}
             @Override public void renderError(String msg){toast(msg);}
@@ -268,7 +269,7 @@ public class MainActivity extends Activity {
         else {int p=engine.part+direction;if(p>=0&&p<engine.parts)changePart(p,0,0,0);}
     }
     private void changePart(int part,float x,float y,float zoom){
-        ReaderEngine current=engine;if(current==null)return;documentView.detach();final int request=++partRequest;
+        ReaderEngine current=engine;if(current==null)return;if(editor!=null)editor.commitInput();documentView.detach();final int request=++partRequest;
         ReaderEngine.WORKER.execute(()->{try{current.setPart(part);main.post(()->{if(engine==current&&!destroyed&&request==partRequest){item.part=current.part;documentView.attach(current,x,y,zoom);library.save(item);updateLocation();}});}catch(Exception ex){main.post(()->{if(engine==current)error(ex.getMessage());});}});
     }
     private void readerMenu(){
